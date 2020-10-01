@@ -1,0 +1,250 @@
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Sifra pacijenta" Binding="{Binding IDPacijet}"/>
+                <DataGridTextColumn Header="Ime pacijenta" Binding="{Binding Ime}"/>
+                <DataGridTextColumn Header="Prezime pacijenta" Binding="{Binding Prezime}"/>
+            </DataGrid.Columns>
+            <DataGrid.RowDetailsTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height='20'/>
+                            <RowDefinition Height='20'/>
+                            <RowDefinition Height='20'/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="100"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Odeljenje" Grid.Row="0" Grid.Column="0" />
+                        <TextBox Text="{Binding OdeljenjeID}" Grid.Row="0" Grid.Column="1" />
+                        <TextBlock Text="Soba" Grid.Row="1" Grid.Column="0" />
+                        <TextBox Text="{Binding SobaID}" Grid.Row="1" Grid.Column="1" />
+                        <TextBlock Text="Br Dana" Grid.Row="2" Grid.Column="0" />
+                        <TextBox Text="{Binding BrDana}" Grid.Row="2" Grid.Column="1" />
+
+                    </Grid>
+                </DataTemplate>
+            </DataGrid.RowDetailsTemplate>
+
+        
+
+
+
+
+
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using System.Data;
+using System.Configuration;
+using System.Data.SqlClient;
+
+namespace Bolnica
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : Window
+    {
+        BolnicaDataClasses1DataContext dc = new BolnicaDataClasses1DataContext();
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            getData();
+            getOdeljenje();
+            getPriroritet();
+        }
+
+        private void getPriroritet()
+        {
+            var data = (from p in dc.Pacijents
+                       select p.Prioritet).Distinct();
+            comboPrioritet.ItemsSource = data;
+        }
+
+        private void getOdeljenje()
+        {
+            var data = from o in dc.Odeljenjes
+                       select o.Naziv;
+            comboOdeljenje.ItemsSource = data;
+        }
+
+        private void getData()
+        {
+            var data = from p in dc.Pacijents
+                       select p;
+            dataGrid.ItemsSource = data;
+        }
+
+
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            string naziv = comboOdeljenje.SelectedValue.ToString();
+            var query = from p in dc.Pacijents
+                        join o in dc.Odeljenjes
+                        on p.OdeljenjeID equals o.OdeljenjeID
+                        where o.Naziv == naziv
+                        select new { p.Ime, p.Prezime };
+            lista.ItemsSource = query;
+
+
+        }
+
+        private void comboPrioritet_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            int index = (comboPrioritet.SelectedIndex) + 1;
+            var data = from p in dc.Pacijents
+                       where p.Prioritet == index
+                       where p.BrDana > 3
+                       
+                       select new { p.Ime, p.Prezime };
+            lista.ItemsSource = data;
+        }
+
+        private void Button_Click_1(object sender, RoutedEventArgs e)
+        {
+           int otpust = int.Parse(otpustTXT.Text);
+
+            var query = (from p in dc.Pacijents
+                        where p.IDPacijent == otpust
+                        select p).Single();
+
+            dc.Pacijents.DeleteOnSubmit(query);
+
+            try
+            {
+                dc.SubmitChanges();
+                MessageBox.Show("Obrisan pacijent","obavestenje",MessageBoxButton.OK,MessageBoxImage.Information);
+                 getData();
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show("Neuspesno brisanje" + ex);
+            }
+
+        }
+
+        private void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            Insert i = new Insert();
+            i.Show();
+        }
+
+        private void comboOdeljenje_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
+
+        private void dataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
+    }
+}
+ 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using System.Data;
+using System.Data.SqlClient;
+using System.Configuration;
+
+namespace Bolnica
+{
+    /// <summary>
+    /// Interaction logic for Insert.xaml
+    /// </summary>
+    public partial class Insert : Window
+    {
+        BolnicaDataClasses1DataContext dc = new BolnicaDataClasses1DataContext();
+        public Insert()
+        {
+            InitializeComponent();
+            puniOdeljenje();
+        }
+
+        private void puniOdeljenje()
+        {
+            var odeljenje = from o in dc.Odeljenjes
+                            select o.Naziv;
+            comboOdelj.ItemsSource = odeljenje;
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            Pacijent nov = new Pacijent()
+            {
+                IDPacijent = int.Parse(txtSifra.Text),
+                Ime = txtIme.Text,
+                Prezime = txtPrezime.Text,
+                Prioritet = 1,
+                OdeljenjeID = 1,
+                SobaID = 1
+            };
+
+            dc.Pacijents.InsertOnSubmit(nov);
+
+            try
+            {
+                dc.SubmitChanges();
+
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show("Neuspesno ubacivanje" + ex);
+            }
+        }
+
+        private void comboOdelj_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            int index = (comboOdelj.SelectedIndex) + 1;
+
+            var query = from s in dc.Sobas
+                        select s.SobaID;
+            comboSoba.ItemsSource = query;
+        }
+
+        private void comboSoba_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            txtSprat.Text = comboSoba.SelectedValue.ToString();
+        }
+
+        private void Button_Click_1(object sender, RoutedEventArgs e)
+        {
+            txtSifra.Text = " ";
+            txtPrezime.Text = " ";
+            txtIme.Text = " ";
+            txtSprat.Text = " ";
+            slider.Value = slider.Minimum;
+            comboOdelj.Text = " ";
+            comboSoba.Text = " ";
+        }
+    }
+}
